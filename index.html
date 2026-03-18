@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>RailGuard Radar Visualizer</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+background:#0a0f2c;
+color:white;
+font-family:Arial;
+text-align:center;
+margin:0;
+}
+
+.header{
+width:80%;
+margin:auto;
+padding:20px;
+}
+
+.tabs button{
+margin:10px;
+padding:10px 20px;
+background:#1c2a6b;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+.tab{
+display:none;
+width:80%;
+margin:auto;
+padding:20px;
+}
+
+canvas{
+background:#111;
+margin-top:20px;
+}
+
+table{
+margin:auto;
+border-collapse:collapse;
+}
+
+td,th{
+border:1px solid white;
+padding:8px;
+}
+
+.formula{
+font-size:22px;
+color:cyan;
+}
+</style>
+
+</head>
+
+<body>
+
+<header class="header">
+<h1>RailGuard Radar Monitoring Dashboard</h1>
+
+<p>
+RailGuard uses mmWave radar (IWR6843) to monitor rail displacement.
+This dashboard compares baseline FFT-based detection with phase-based
+high-precision displacement estimation.
+</p>
+</header>
+
+<div class="tabs">
+<button onclick="showTab('baseline')">Baseline</button>
+<button onclick="showTab('phase')">Phase Model</button>
+<button onclick="showTab('radar')">Radar View</button>
+<button onclick="showTab('physics')">Physics</button>
+</div>
+
+<!-- BASELINE -->
+<div id="baseline" class="tab">
+
+<h2>Baseline Detection (OOB Firmware)</h2>
+
+<p>
+FFT magnitude-based detection shows centimeter-level displacement.
+</p>
+
+<canvas id="baselineChart"></canvas>
+
+<h3>Experimental Data</h3>
+
+<table>
+<tr><th>Test</th><th>Separation (m)</th></tr>
+<tr><td>1</td><td>0.05</td></tr>
+<tr><td>2</td><td>0.05</td></tr>
+<tr><td>3</td><td>0.06</td></tr>
+<tr><td>4</td><td>0.08</td></tr>
+<tr><td>5</td><td>0.10</td></tr>
+</table>
+
+</div>
+
+<!-- PHASE -->
+<div id="phase" class="tab">
+
+<h2>Phase-Based Displacement</h2>
+
+<p class="formula">
+ΔR = (λ / 4π) × Δφ
+</p>
+
+<p>λ ≈ 5 mm for 60 GHz radar</p>
+
+<label>Adjust Phase</label><br>
+
+<input type="range" min="0" max="1" step="0.05" value="0.2" id="phaseSlider">
+
+<p>Phase: <span id="phaseValue">0.2</span> rad</p>
+<p>Displacement: <span id="dispValue">0</span> mm</p>
+
+<canvas id="phaseChart"></canvas>
+
+</div>
+
+<!-- RADAR -->
+<div id="radar" class="tab">
+
+<h2>Radar Visualization</h2>
+
+<canvas id="radarCanvas" width="500" height="500"></canvas>
+
+</div>
+
+<!-- PHYSICS -->
+<div id="physics" class="tab">
+
+<h2>Physics Explanation</h2>
+
+<p>
+FFT detection depends on range resolution (~cm level), limiting
+detection of small movements.
+</p>
+
+<p>
+Phase-based detection tracks signal phase changes, enabling
+sub-millimeter displacement measurement.
+</p>
+
+</div>
+
+<script>
+
+function showTab(id){
+document.querySelectorAll(".tab").forEach(t=>t.style.display="none")
+document.getElementById(id).style.display="block"
+}
+showTab("baseline")
+
+// BASELINE GRAPH
+new Chart(document.getElementById("baselineChart"),{
+type:"line",
+data:{
+labels:[1,2,3,4,5],
+datasets:[{
+label:"Separation (m)",
+data:[0.05,0.05,0.06,0.08,0.10],
+borderColor:"cyan"
+}]
+}
+})
+
+// PHASE GRAPH
+const wavelength=0.005
+const phaseVals=[0.05,0.1,0.2,0.5,1]
+
+const disp=phaseVals.map(p=>
+(wavelength/(4*Math.PI))*p*1000
+)
+
+new Chart(document.getElementById("phaseChart"),{
+type:"line",
+data:{
+labels:phaseVals,
+datasets:[{
+label:"Displacement (mm)",
+data:disp,
+borderColor:"orange"
+}]
+}
+})
+
+// SLIDER
+document.getElementById("phaseSlider").oninput=function(){
+
+document.getElementById("phaseValue").innerText=this.value
+
+let d=(wavelength/(4*Math.PI))*this.value*1000
+
+document.getElementById("dispValue").innerText=d.toFixed(3)
+}
+
+// RADAR ANIMATION
+const canvas=document.getElementById("radarCanvas")
+const ctx=canvas.getContext("2d")
+
+let angle=0
+
+function draw(){
+
+ctx.fillStyle="#001133"
+ctx.fillRect(0,0,500,500)
+
+ctx.strokeStyle="green"
+
+ctx.beginPath()
+ctx.arc(250,500,250,Math.PI,2*Math.PI)
+ctx.stroke()
+
+ctx.beginPath()
+ctx.moveTo(250,500)
+ctx.lineTo(250+250*Math.cos(angle),500+250*Math.sin(angle))
+ctx.stroke()
+
+ctx.fillStyle="lime"
+
+ctx.beginPath()
+ctx.arc(240,360,5,0,2*Math.PI)
+ctx.fill()
+
+ctx.beginPath()
+ctx.arc(270,340,5,0,2*Math.PI)
+ctx.fill()
+
+angle+=0.02
+requestAnimationFrame(draw)
+}
+
+draw()
+
+</script>
+
+</body>
+</html>
